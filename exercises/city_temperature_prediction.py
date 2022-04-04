@@ -115,5 +115,14 @@ if __name__ == '__main__':
     The_Netherlands = X[X['Country'] == "The Netherlands"]
     Jordan = X[X['Country'] == "Jordan"]
 
+    South_Africa_loss = poly_fit.loss(South_Africa["DayOfYear"], South_Africa["Temp"])
+    The_Netherlands_loss = poly_fit.loss(The_Netherlands["DayOfYear"], The_Netherlands["Temp"])
+    Jordan_loss = poly_fit.loss(Jordan["DayOfYear"], Jordan["Temp"])
 
-    # raise NotImplementedError()
+    losses = [South_Africa_loss, The_Netherlands_loss, Jordan_loss]
+    data = {'Country': ['Jordan', 'South Africa', 'The Netherlands'], 'Loss': losses}
+    countries = ['Jordan', 'South Africa', 'The Netherlands']
+
+    figure = px.bar(x=countries, y=losses, title='Losses of Other Countries According to Israel Model')
+    figure.show()
+
