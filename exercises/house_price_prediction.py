@@ -1,8 +1,3 @@
-import os
-import random
-
-from plotly.io import kaleido
-
 from IMLearn.utils import split_train_test
 from IMLearn.learners.regressors import LinearRegression
 
@@ -10,7 +5,6 @@ from typing import NoReturn
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-import plotly.express as px
 import plotly.io as pio
 
 pio.templates.default = "simple_white"
@@ -67,6 +61,7 @@ def load_data(filename: str):
 
     # Step 2.4: make zipcode numeric with one hot encoding
     zipcode_dummies = pd.get_dummies(X["zipcode"])
+    X.drop(["zipcode"], inplace=True, axis=1)
 
     # Step 2.5: add columns:
     X = pd.concat([X, year_frame, month_frame, day_frame, zipcode_dummies], axis=1)
@@ -102,8 +97,9 @@ def feature_evaluation(X: pd.DataFrame, y: pd.Series, output_path: str = ".") ->
         return (np.cov(x, y)[0][1]) / (np.std(x) * np.std(y))
 
     features = ["year", "month", "day", "bedrooms", "bathrooms", "sqft_living", "sqft_lot", "floors", "waterfront",
-                "view", "condition", "grade", "sqft_above", "sqft_basement", "yr_built", "yr_renovated", "zipcode",
+                "view", "condition", "grade", "sqft_above", "sqft_basement", "yr_built", "yr_renovated",
                 "lat", "long", "sqft_living15", "sqft_lot15"]
+
     for feature in features:
         column = X[feature]
         ro = pearson_correlation(column, y)
@@ -113,7 +109,7 @@ def feature_evaluation(X: pd.DataFrame, y: pd.Series, output_path: str = ".") ->
                                      f'Correlation {ro}', xaxis_title=f'{feature}',
                                yaxis_title=r"$\text{Prices}$", height=500))
         figure.show()
-        # figure.write_image("" + output_path + "/" + feature + ".pdf")
+        figure.write_image("" + output_path + "/" + feature + ".pdf")
 
 
 if __name__ == '__main__':
@@ -122,8 +118,6 @@ if __name__ == '__main__':
     # Question 1 - Load and preprocessing of housing prices dataset
 
     X, y = load_data(filename)
-
-
 
     # Question 2 - Feature evaluation with respect to response
     feature_evaluation(X, y, 'images')

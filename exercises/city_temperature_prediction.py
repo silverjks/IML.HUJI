@@ -1,4 +1,3 @@
-import IMLearn.learners.regressors.linear_regression
 from IMLearn.learners.regressors import PolynomialFitting
 from IMLearn.utils import split_train_test
 
@@ -56,13 +55,14 @@ if __name__ == '__main__':
 
     # Question 2 - Exploring data for specific country
     israel_data = X[X['Country'] == "Israel"]
-    # figure = px.scatter(israel_data, x='DayOfYear', y='Temp', color='Year', title='Temperature in Israel as a Function of '
-    #                                                                            'the Year')
-    # figure.show()
-    #
-    # months = israel_data.groupby(israel_data['Month'])['Temp'].std()
-    # figure = px.bar(months, title='STD of Temperature in Israel as a Function of the Month')
-    # figure.show()
+    figure = px.scatter(israel_data, x='DayOfYear', y='Temp', color='Year', title='Temperature in Israel as a '
+                                                                                  'Function of the Year')
+    figure.show()
+
+    months = israel_data.groupby(israel_data['Month'])['Temp'].std()
+
+    figure = px.bar(months, title='STD of Temperature in Israel as a Function of the Month')
+    figure.show()
 
     # Question 3 - Exploring differences between countries
     grouped_std = X.groupby(['Country', 'Month'])['Temp'].std()
@@ -73,8 +73,9 @@ if __name__ == '__main__':
 
     columns = {'Country': grouped_country, 'Month': grouped_months, 'std': grouped_std, 'Average': grouped_average}
     df = pd.DataFrame(columns)
-    # figure = px.line(df, x='Month', y='Average', color='Country', error_y='std', title='Average Monthly Temperature')
-    # figure.show()
+
+    figure = px.line(df, x='Month', y='Average', color='Country', error_y='std', title='Average Monthly Temperature')
+    figure.show()
 
     # Question 4 - Fitting model for different values of `k`
     # Step 1: Randomly split the dataset into a training set (75%) and test set (25%)
@@ -103,8 +104,8 @@ if __name__ == '__main__':
         print("for k=", k, " the loss is ", loss)
 
     # Step 5: plot the test error recorded for each value of k.
-    # figure = px.bar(x=k_values, y=losses, title='Loss as a function of K')
-    # figure.show()
+    figure = px.bar(x=k_values, y=losses, title='Loss as a function of K')
+    figure.show()
 
     # Question 5 - Evaluating fitted model on different countries
     best_k = 5
@@ -119,7 +120,7 @@ if __name__ == '__main__':
     The_Netherlands_loss = poly_fit.loss(The_Netherlands["DayOfYear"], The_Netherlands["Temp"])
     Jordan_loss = poly_fit.loss(Jordan["DayOfYear"], Jordan["Temp"])
 
-    losses = [South_Africa_loss, The_Netherlands_loss, Jordan_loss]
+    losses = [Jordan_loss, South_Africa_loss, The_Netherlands_loss, ]
     data = {'Country': ['Jordan', 'South Africa', 'The Netherlands'], 'Loss': losses}
     countries = ['Jordan', 'South Africa', 'The Netherlands']
 
