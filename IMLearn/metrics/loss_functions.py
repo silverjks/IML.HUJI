@@ -59,14 +59,11 @@ def accuracy(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     -------
     Accuracy of given predictions
     """
-    p = len(np.argwhere(y_true == 1))  # positives.
-    n = len(np.argwhere(y_true == -1))  # negatives
 
-    difference = y_pred + y_true  # if both are true, we get 2. if both are false, we get -2.
-    tp = len(np.argwhere(difference == 2))  # true positive
-    tn = len(np.argwhere(difference == -2))
 
-    return (tp + tn) / (p + n)
+    true = np.sum(y_pred == y_true)  # correct classification
+
+    return true / len(y_true)
 
 
 def cross_entropy(y_true: np.ndarray, y_pred: np.ndarray) -> float:
