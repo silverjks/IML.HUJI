@@ -2,6 +2,7 @@ import numpy as np
 from typing import Tuple
 from IMLearn.metalearners.adaboost import AdaBoost
 from IMLearn.learners.classifiers import DecisionStump
+from IMLearn.metrics import accuracy
 from utils import *
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -56,9 +57,17 @@ def fit_and_evaluate_adaboost(noise, n_learners=250, train_size=5000, test_size=
         training_error.append(error)
 
     test_error = []
+
+    # for Q3:
+    min_error = np.inf
+    min_error_t = 0
     for t in range(1, n_learners + 1):
         error = booster.partial_loss(X_test, y_test, t)
         test_error.append(error)
+        # for Q3
+        if error < min_error:
+            min_error = error
+            min_error_t = t
 
     figure = go.Figure([
         go.Scatter(x=np.arange(n_learners), y=np.array(test_error)),
@@ -66,14 +75,39 @@ def fit_and_evaluate_adaboost(noise, n_learners=250, train_size=5000, test_size=
     ])
     figure.show()
 
-    # # Question 2: Plotting decision surfaces
-    # T = [5, 50, 100, 250]
-    # lims = np.array([np.r_[train_X, test_X].min(axis=0), np.r_[train_X, test_X].max(axis=0)]).T + np.array([-.1, .1])
-    # raise NotImplementedError()
-    #
-    # # Question 3: Decision surface of best performing ensemble
-    # raise NotImplementedError()
-    #
+    # Question 2: Plotting decision surfaces
+    T = [5, 50, 100, 250]
+    lims = np.array([np.r_[train_X, test_X].min(axis=0), np.r_[train_X, test_X].max(axis=0)]).T + np.array([-.1, .1])
+
+    subplot_titles = [f"num classifiers = {t}" for t in T]
+
+    fig = make_subplots(rows=2, cols=2, subplot_titles=subplot_titles)
+
+    for i, t in enumerate(T):
+        fig.add_traces([decision_surface(lambda x: booster.partial_predict(x, t), lims[0], lims[1], showscale=False),
+                        go.Scatter(x=test_X[:, 0], y=test_X[:, 1], mode="markers", showlegend=False,
+                                   marker=dict(color=test_y, colorscale=[custom[0], custom[-1]],
+                                               line=dict(color="black", width=1)))],
+                       rows=(i // 2) + 1, cols=(i % 2) + 1)
+
+    fig.update_layout(margin=dict(t=100)).update_xaxes(visible=False).update_yaxes(visible=False)
+    fig.show()
+
+    # Question 3: Decision surface of best performing ensemble
+
+    min_accuracy = accuracy(y_test, booster.partial_predict(X_test, min_error_t))
+    subplot_titles = [f"num classifiers = {min_error_t} ; accuracy = {min_accuracy}"]
+    fig = make_subplots(rows=1, cols=1, subplot_titles=subplot_titles)
+
+    for i, t in enumerate(T):
+        fig.add_traces([decision_surface(lambda x: booster.partial_predict(x, t), lims[0], lims[1], showscale=False),
+                        go.Scatter(x=test_X[:, 0], y=test_X[:, 1], mode="markers", showlegend=False,
+                                   marker=dict(color=test_y, colorscale=[custom[0], custom[-1]],
+                                               line=dict(color="black", width=1)))], rows=1, cols=1)
+
+    fig.update_layout(margin=dict(t=100)).update_xaxes(visible=False).update_yaxes(visible=False)
+    fig.show()
+
     # # Question 4: Decision surface with weighted samples
     # raise NotImplementedError()
 
