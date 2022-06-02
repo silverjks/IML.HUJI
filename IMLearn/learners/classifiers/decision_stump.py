@@ -4,6 +4,8 @@ from ...base import BaseEstimator
 import numpy as np
 from itertools import product
 
+from IMLearn.metrics import misclassification_error
+
 
 class DecisionStump(BaseEstimator):
     """
@@ -42,7 +44,7 @@ class DecisionStump(BaseEstimator):
         """
         self.threshold_ = 0
         self.j_ = 0
-        self.sign_ = 1
+        self.sign_ = 0
 
         cur_error = np.inf
         for sign, j in product([-1, 1], range(X.shape[1])):
@@ -108,12 +110,18 @@ class DecisionStump(BaseEstimator):
 
         cur_loss = np.inf
         cur_threshold = None
+
         for threshold in np.unique(values):
             pred = np.where(values >= threshold, sign, -sign)
             loss = np.sum(np.abs(labels[labels * pred < 0]))  # 1*1 = (-1)*(-1) = 1
             if loss < cur_loss:
                 cur_loss = loss
                 cur_threshold = threshold
+
+        if cur_threshold == np.min(values):
+            cur_threshold = np.NINF
+        elif cur_threshold == np.max(values):
+            cur_threshold = np.inf
 
         return cur_threshold, cur_loss
 
@@ -134,5 +142,4 @@ class DecisionStump(BaseEstimator):
         loss : float
             Performance under missclassification loss function
         """
-        from ...metrics import misclassification_error
         return misclassification_error(self.predict(X), y)

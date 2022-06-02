@@ -43,17 +43,11 @@ def fit_and_evaluate_adaboost(noise, n_learners=250, train_size=5000, test_size=
     (train_X, train_y), (test_X, test_y) = generate_data(train_size, noise), generate_data(test_size, noise)
 
     # Question 1: Train- and test errors of AdaBoost in noiseless case
-    noise_ratio = 0.0
-    iterations = 250
-    X_test, y_test = generate_data(test_size, noise_ratio)
-    X_train, y_train = generate_data(train_size, noise_ratio)
-
-    booster = AdaBoost(DecisionStump, iterations)
-    booster.fit(X_train, y_train)
+    booster = AdaBoost(DecisionStump, n_learners).fit(train_X, train_y)
 
     training_error = []
     for t in range(1, n_learners + 1):
-        error = booster.partial_loss(X_train, y_train, t)
+        error = booster.partial_loss(train_X, train_y, t)
         training_error.append(error)
 
     test_error = []
@@ -61,8 +55,9 @@ def fit_and_evaluate_adaboost(noise, n_learners=250, train_size=5000, test_size=
     # for Q3:
     min_error = np.inf
     min_error_t = 0
+
     for t in range(1, n_learners + 1):
-        error = booster.partial_loss(X_test, y_test, t)
+        error = booster.partial_loss(test_X, test_y, t)
         test_error.append(error)
         # for Q3
         if error < min_error:
@@ -81,37 +76,47 @@ def fit_and_evaluate_adaboost(noise, n_learners=250, train_size=5000, test_size=
 
     subplot_titles = [f"num classifiers = {t}" for t in T]
 
-    fig = make_subplots(rows=2, cols=2, subplot_titles=subplot_titles)
+    figure = make_subplots(rows=2, cols=2, subplot_titles=subplot_titles)
 
     for i, t in enumerate(T):
-        fig.add_traces([decision_surface(lambda x: booster.partial_predict(x, t), lims[0], lims[1], showscale=False),
+        figure.add_traces([decision_surface(lambda x: booster.partial_predict(x, t), lims[0], lims[1], showscale=False),
                         go.Scatter(x=test_X[:, 0], y=test_X[:, 1], mode="markers", showlegend=False,
                                    marker=dict(color=test_y, colorscale=[custom[0], custom[-1]],
                                                line=dict(color="black", width=1)))],
                        rows=(i // 2) + 1, cols=(i % 2) + 1)
 
-    fig.update_layout(margin=dict(t=100)).update_xaxes(visible=False).update_yaxes(visible=False)
-    fig.show()
+    figure.update_layout(margin=dict(t=100)).update_xaxes(visible=False).update_yaxes(visible=False)
+    figure.show()
 
     # Question 3: Decision surface of best performing ensemble
 
-    min_accuracy = accuracy(y_test, booster.partial_predict(X_test, min_error_t))
+    min_accuracy = accuracy(test_y, booster.partial_predict(test_X, min_error_t))
     subplot_titles = [f"num classifiers = {min_error_t} ; accuracy = {min_accuracy}"]
-    fig = make_subplots(rows=1, cols=1, subplot_titles=subplot_titles)
+    figure = make_subplots(rows=1, cols=1, subplot_titles=subplot_titles)
 
     for i, t in enumerate(T):
-        fig.add_traces([decision_surface(lambda x: booster.partial_predict(x, t), lims[0], lims[1], showscale=False),
+        figure.add_traces([decision_surface(lambda x: booster.partial_predict(x, t), lims[0], lims[1], showscale=False),
                         go.Scatter(x=test_X[:, 0], y=test_X[:, 1], mode="markers", showlegend=False,
                                    marker=dict(color=test_y, colorscale=[custom[0], custom[-1]],
                                                line=dict(color="black", width=1)))], rows=1, cols=1)
 
-    fig.update_layout(margin=dict(t=100)).update_xaxes(visible=False).update_yaxes(visible=False)
-    fig.show()
+    figure.update_layout(margin=dict(t=100)).update_xaxes(visible=False).update_yaxes(visible=False)
+    figure.show()
 
-    # # Question 4: Decision surface with weighted samples
-    # raise NotImplementedError()
+    # Question 4: Decision surface with weighted samples
+    sample_sizes = booster.D_ / np.max(booster.D_) * 5
 
+    figure = go.Figure([decision_surface(booster.predict, lims[0], lims[1], showscale=False),
+                        go.Scatter(x=train_X[:, 0], y=train_X[:, 1], mode="markers", showlegend=False,
+                                   marker=dict(color=train_y, size=sample_sizes, colorscale=[custom[0], custom[-1]],
+                                               line=dict(color="black", width=1)))])
+    figure.update_layout(title=f"proportional weight of training set after last iteration")
+    figure.update_xaxes(visible=False)
+    figure.update_yaxes(visible=False)
+    figure.show()
 
+x
 if __name__ == '__main__':
     np.random.seed(0)
     fit_and_evaluate_adaboost(0)
+    fit_and_evaluate_adaboost(0.4)

@@ -54,20 +54,19 @@ class AdaBoost(BaseEstimator):
         self.weights_ = np.zeros(self.iterations_)
 
         m = y.shape[0]
-        D = np.array([1 / m] * m)
+        self.D_ = np.array([1 / m] * m)
 
         for i in range(self.iterations_):
-            self.models_[i] = self.wl_()  # initialize new model
-            self.models_[i].fit(X, y*D)
+            self.models_[i] = self.wl_() .fit(X, y * self.D_)
 
             y_pred = self.models_[i].predict(X)
 
-            epsilon = 0.5 * np.sum(np.abs(y - y_pred) * D)
+            epsilon = np.sum(self.D_[y != y_pred])
 
-            self.weights_[i] = 0.5 * np.log((1 / epsilon) - 1)
+            self.weights_[i] = 0.5 * np.log((1 - epsilon) / epsilon)
 
-            D *= np.exp(- self.weights_[i] * y * y_pred)
-            D /= np.sum(D)
+            self.D_ *= np.exp(-y *self.weights_[i] * y_pred)
+            self.D_ /= np.sum(self.D_)
 
     def _predict(self, X):
         """
@@ -83,7 +82,7 @@ class AdaBoost(BaseEstimator):
         responses : ndarray of shape (n_samples, )
             Predicted responses of given samples
         """
-        return self.partial_predict(X, X.shape[0])
+        return self.partial_predict(X, len(self.models_))
 
     def _loss(self, X: np.ndarray, y: np.ndarray) -> float:
         """
@@ -102,7 +101,7 @@ class AdaBoost(BaseEstimator):
         loss : float
             Performance under missclassification loss function
         """
-        return misclassification_error(self.predict(X), y)
+        return self.partial_loss(X, y, len(self.models_))
 
     def partial_predict(self, X: np.ndarray, T: int) -> np.ndarray:
         """
@@ -121,7 +120,8 @@ class AdaBoost(BaseEstimator):
         responses : ndarray of shape (n_samples, )
             Predicted responses of given samples
         """
-        pred = np.sum(self.models_[i].predict(X) * self.weights_[i] for i in range(T))
+        pred = np.array([self.models_[i].predict(X) * self.weights_[i] for i in range(T)])
+        pred = np.sum(pred, axis=0)
         return np.sign(pred)
 
     def partial_loss(self, X: np.ndarray, y: np.ndarray, T: int) -> float:
