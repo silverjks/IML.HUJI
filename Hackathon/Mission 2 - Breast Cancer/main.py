@@ -1,5 +1,7 @@
-from sklearn.model_selection import cross_val_score
-from typing import List, Dict
+from sklearn.linear_model import LogisticRegression
+from sklearn import svm
+from sklearn.model_selection import cross_val_score, train_test_split
+from typing import List, Dict, Tuple
 
 import pandas as pd
 from sklearn.impute import SimpleImputer
@@ -9,6 +11,7 @@ from pandas import DataFrame
 
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import RandomizedSearchCV
+from sklearn.multioutput import MultiOutputClassifier
 
 
 def load_data(path):
@@ -17,8 +20,7 @@ def load_data(path):
     :return: Dataframe from data
     """
     df = pd.read_csv(path)
-
-    df.fillna(np.NaN, inplace=True)
+    df.dropna()
     return df
 
 
@@ -179,6 +181,7 @@ def class_fish_col(df, col_name):
                 else:
                     df[col_name][i] = np.NaN
 
+
 def sort_percent_first(vals_arr):
     """
     Helper function for 'er_pr_col_prepos'
@@ -229,7 +232,7 @@ def er_pr_col_prepos(df, col_name):
             vals_arr = val.split(sep=' ')
             vals_arr = sort_percent_first(vals_arr)
             for char in vals_arr:
-                if '%' in char:         # If a percentage of cells appears
+                if '%' in char:  # If a percentage of cells appears
                     try:
                         num = int(re.sub(r'[^\d]', '', char))
                     except:
@@ -243,7 +246,7 @@ def er_pr_col_prepos(df, col_name):
                     else:
                         new_df[name][i] = 0
                     break
-                elif char.isdigit():         # If only a digit appears
+                elif char.isdigit():  # If only a digit appears
                     num = int(char)
                     if num < 1:
                         new_df[name][i] = 0
@@ -255,13 +258,13 @@ def er_pr_col_prepos(df, col_name):
                         new_df[name][i] = 3
                     break
                 else:
-                    char = char.lower()    # Classifying according to indicative negative strings
+                    char = char.lower()  # Classifying according to indicative negative strings
                     for neg_str in neg_vals:
                         if neg_str in char:
                             new_df[name][i] = 0
                             break
                     else:
-                        for pos_str in pos_vals:   # Classifying according to indicative positive strings
+                        for pos_str in pos_vals:  # Classifying according to indicative positive strings
                             if pos_str in char:
                                 if 'strong' in pos_str:
                                     new_df[name][i] = 3
@@ -335,7 +338,7 @@ def get_replacement_dict(ordered_options_list: List) -> Dict:
     return transform_dict
 
 
-def preprocess(path: str) -> DataFrame:
+def preprocess(path: str):
     """
     Parameters
     ----------
@@ -411,16 +414,10 @@ def preprocess(path: str) -> DataFrame:
     df["אבחנה-T -Tumor mark (TNM)"] = df["אבחנה-T -Tumor mark (TNM)"].replace(get_replacement_dict(
         ordered_options_list))
 
-    p = pd.get_dummies(df["אבחנה-Tumor width"])
     # merge אבחנה-Positive nodes and אבחנה-Nodes exam todo: after imputation
 
-    missing_values_dict = {'אבחנה-Basic stage', 'אבחנה-Histopatological degree', 'אבחנה-Ivi -Lymphovascular invasion',
-                           'אבחנה-Lymphatic penetration', 'אבחנה-M -metastases mark (TNM)',
-                           'אבחנה-N -lymph nodes mark (TNM)', 'אבחנה-Stage', 'אבחנה-Surgery sum',
-                           'אבחנה-T -Tumor mark (TNM)',
-                           'אבחנה-Tumor depth', 'אבחנה-Tumor width'}
-    for col in missing_values_dict:
-        df[col] = df[col].replace({'Null': np.NaN})
+    for col in df.columns:
+        df[col] = df[col].replace(['Null', np.inf, -np.inf], np.NaN)
 
     # for quantifiable features, set valid range
     df["אבחנה-Surgery sum"] = pd.to_numeric(df["אבחנה-Surgery sum"], downcast="float")
@@ -428,9 +425,7 @@ def preprocess(path: str) -> DataFrame:
     df["אבחנה-Tumor width"] = pd.to_numeric(df["אבחנה-Tumor width"], downcast="float")
     df["אבחנה-Age"] = pd.to_numeric(df["אבחנה-Age"], downcast="float")
 
-    df.replace(to_replace=np.NaN,
-               value=0) #todo bandaid
-
+    df.to_csv("testing", sep='\t')
     imputer = SimpleImputer(strategy='most_frequent')
     imputer.fit(df.values)
     df = imputer.transform(df.values)
@@ -443,41 +438,51 @@ def preprocess(path: str) -> DataFrame:
     return df
 
 
-def build_baseline(X, y):
-    param_grid = {
-        'bootstrap': [True],
-        'max_depth': [50, 100],
-        'max_features': [3, 8],
-        'min_samples_leaf': [3, 5],
-        'min_samples_split': [2, 5],
-        'n_estimators': [300, 500]
-    }
+def extract_labels_of_sample(val):
+    set_of_labels = set()
+    x = val.split(",")
+    for label in x:
+        if val == "[]":
+            set_of_labels.add("None")
+            continue
 
-    forest_reg = RandomForestClassifier(random_state=42, class_weight="balanced")
-    rnd_search = RandomizedSearchCV(forest_reg, param_distributions=param_grid,
-                                    n_iter=5, cv=5, scoring='f1_weighted', random_state=42)
-    rnd_search.fit(X, y)
-
-    return rnd_search.best_estimator_
+        label = label.replace("[", "")
+        label = label.replace("]", "")
+        label = label.replace(" ", "")
+        label = label.replace("'", "")
+        set_of_labels.add(label)
+    return set_of_labels
 
 
-def display_scores(scores):
-    print("Scores:", scores)
-    print("Mean:", scores.mean())
-    print("Standard Deviation:", scores.std())
+def extract_all_labels(y):
+    unique_vals = pd.unique(y["אבחנה-Location of distal metastases"])
+    all_labels = set()
+    for val in unique_vals:
+        all_labels |= extract_labels_of_sample(val)
+
+    return all_labels
+
+
+def process_labels(y):
+    unique_labels = extract_all_labels(y)
+
+    vector_labels = pd.DataFrame(0, columns=unique_labels, index=range(len(y)))
+    for i, val in enumerate(y["אבחנה-Location of distal metastases"]):
+        labels = extract_labels_of_sample(val)
+        for label in labels:
+            vector_labels.loc[i, label] = 1
+
+    return vector_labels
 
 
 if __name__ == '__main__':
     path = "train.feats.csv"
+
+    y_path = "train.labels.0.csv"
     df = preprocess(path)
+    y = process_labels(load_data(y_path))
+    x_train, x_test, y_train, y_test = train_test_split(df, y, test_size=0.25)
+    clf = MultiOutputClassifier(svm.SVC()).fit(x_train, y_train)
 
-    y_path = "train.labels.1.csv"
-    # temp fix
-    y = pd.read_csv(y_path).dropna()
-    y = np.ravel(y)
-
-    final_model = build_baseline(df, y)
-    scores = cross_val_score(final_model, df, y,
-                             scoring="f1_weighted", cv=5)
-    print("Validation Dataset")
-    display_scores(scores)
+    clf.score(x_test, y_test)
+    print()
