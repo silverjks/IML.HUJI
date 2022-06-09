@@ -37,29 +37,22 @@ def cross_validate(estimator: BaseEstimator, X: np.ndarray, y: np.ndarray,
     validation_score: float
         Average validation score over folds
     """
-    train_losses = np.empty(cv)
-    validation_losses = np.empty(cv)
+    f_X = np.array_split(X, cv)
+    f_y = np.array_split(y, cv)
 
-    folds = np.array_split(np.arange(X.shape[0]), cv)
+    train_losses = np.zeros(cv)
+    validation_losses = np.zeros(cv)
 
-    for i, indexes in enumerate(folds):
-        # setup mask
-        mask = np.ones_like(np.arange(X.shape[0]), bool)
-        mask[indexes] = False
+    for i in range(cv):
+        X_train = np.concatenate(f_X[:i] + f_X[i + 1:], axis=0)
+        y_train = np.concatenate(f_y[:i] + f_y[i + 1:], axis=0)
 
-        # fit estimator
-        estimator.fit(X[mask], y[mask])
+        X_pred = f_X[i]
+        y_pred = f_y[i]
 
-        # make the predictions and calculate the losses
-        train_prediction = estimator.predict(X[mask])
-        train_losses[i] = scoring(train_prediction, y[mask])
+        estimator.fit(X_train, y_train)
 
-        validation_prediction = estimator.predict(X[~mask])
-        validation_losses[i] = scoring(validation_prediction, y[~mask])
+        train_losses[i] = scoring(estimator.predict(X_train), y_train)
+        validation_losses[i] = scoring(estimator.predict(X_pred), y_pred)
 
-    # return average train score over folds
-    avg_train_score = np.mean(train_losses)
-
-    # return average validation score over folds
-    avg_validation_score = np.mean(train_losses)
-    return avg_train_score, avg_validation_score
+    return np.average(train_losses), np.average(validation_losses)

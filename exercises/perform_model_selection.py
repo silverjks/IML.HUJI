@@ -60,7 +60,7 @@ def select_polynomial_degree(n_samples: int = 100, noise: float = 5):
 
     for deg in range(num_of_degrees):
         # fit model
-        model = PolynomialFitting(deg )
+        model = PolynomialFitting(deg)
 
         # default in cross_validate is 5-fold
         train_res, validation_res = cross_validate(model, x_train, y_train, mean_square_error)
@@ -69,12 +69,9 @@ def select_polynomial_degree(n_samples: int = 100, noise: float = 5):
         validation_scores.append(validation_res)
 
     x = np.arange(num_of_degrees)
-    figure = go.Figure()
-    figure.add_trace(go.Scatter(x=x, y=np.array(train_scores), name="avg train error",
-                                mode="lines"))
-    figure.add_trace(
-        go.Scatter(x=x, y=np.array(validation_scores), name="avg validation error",
-                   mode="lines"))
+    figure = go.Figure(data=[go.Scatter(x=x, y=train_scores, name="Train Error", mode="lines"),
+                             go.Scatter(x=x, y=validation_scores, name="Validation Error", mode="lines")])
+    figure.update_layout(xaxis_title="Degree", yaxis_title="Loss")
     figure.show()
 
     # Question 3 - Using best value of k
@@ -86,8 +83,8 @@ def select_polynomial_degree(n_samples: int = 100, noise: float = 5):
     # round to 2 decimal places
     loss = np.round(model.loss(x_test, y_test), 2)
     validation = np.round(validation_scores[k], 2)
-    print("The test error for", k, "-degree polynomial is", loss, "while the previous validation error is ",
-          validation)
+    print("The test error for the best k, which is", k, ", with noise", noise, ", is", loss,
+          ". previous validation error is ", validation)
 
 
 def select_regularization_parameter(n_samples: int = 50, n_evaluations: int = 500):
@@ -131,11 +128,12 @@ def select_regularization_parameter(n_samples: int = 50, n_evaluations: int = 50
         lasso_train_scores.append(train_res)
         lasso_validation_scores.append(validation_res)
 
-    figure = go.Figure()
-    figure.add_trace(go.Scatter(x=possible_range, y=ridge_train_scores, name="ridge: avg train error", mode="lines"))
-    figure.add_trace(go.Scatter(x=possible_range, y=ridge_validation_scores, name="ridge: avg validation error", mode="lines"))
-    figure.add_trace(go.Scatter(x=possible_range, y=lasso_train_scores, name="lasso: avg train error", mode="lines"))
-    figure.add_trace(go.Scatter(x=possible_range, y=lasso_validation_scores, name="lasso: avg train error", mode="lines"))
+    figure = go.Figure(
+        data=[go.Scatter(x=possible_range, y=ridge_train_scores, name="ridge: avg train error", mode="lines"),
+              go.Scatter(x=possible_range, y=ridge_validation_scores, name="ridge: avg validation error", mode="lines"),
+              go.Scatter(x=possible_range, y=lasso_train_scores, name="lasso: avg train error", mode="lines"),
+              go.Scatter(x=possible_range, y=lasso_validation_scores, name="lasso: avg train error", mode="lines")])
+    figure.update_layout(xaxis_title="Lambda", yaxis_title="Loss")
     figure.show()
 
     # Question 8 - Compare best Ridge model, best Lasso model and Least Squares model
